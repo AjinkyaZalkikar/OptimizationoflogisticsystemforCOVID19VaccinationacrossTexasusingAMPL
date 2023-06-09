@@ -1,0 +1,49 @@
+param N;
+param K;
+param J;
+param M;
+param Cm{i in 0..N-1}; 		#manufacturer vaccine selling capacity each week
+param B; 			#budget
+param Sv; 			#Cost per dose of vaccine
+param St{k in 1..K, j in 1..J};	#transportation cost of vaccines per dose from WH to VC
+param Sc{k in 1..K}; 		#setup cost for each WH
+param Cw{k in 1..K}; 		#Capacity of storage in WH
+param Cv{j in 1..J}; 		#Capacity of VC
+param Lv{j in 1..J}; 		#Maximum vaccines administered limitation in a week
+param Q{m in 1..M, j in 1..J}; 	#groupwise population in each county
+param Sa{j in 1..J}; 		#storage cost per dose in VC
+ 			
+
+var X1{k in 1..K, i in 0..N-1} >= 0, integer;
+var X2{i in 1..N, k in 1..K, j in 1..J} >= 0, integer;
+var X3{j in 1..J, i in 1..N, m in 1..M} >= 0, integer;
+var Y{k in 1..K} binary;
+var Z{m in 1..M, j in 1..J} binary;
+var I1{k in 1..K, i in 0..N} >= 0, integer;
+var I2{j in 1..J, i in 1..N} >= 0, integer;
+var P{j in 1..J}>=0, integer;
+var WP;
+
+#Maximize_Performance
+maximize performance:
+WP;
+
+subject to
+WorstVC{j in 1..J}:WP<=P[j];
+Perf{j in 1..J}:P[j]=sum{m in 1..M}Z[m,j];
+G1{j in 1..J,m in 1..M}:sum{i in 1..N}X3[j,i,m]>=Q[m,j]*Z[m,j];
+G2{j in 1..J, m in 2..M}:sum{i in 1..N}X3[j,i,m]<=Q[m,j]*Z[m-1,j];
+G3{j in 1..J,m in 1..1}:sum{i in 1..N}X3[j,i,m]<=Q[m,j];
+InvCounty1{j in 1..J, i in 1..1}:I2[j,i]=sum{k in 1..K}X2[i,k,j]-sum{m in 1..M}X3[j,i,m];
+InvCounty2{j in 1..J, i in 2..N}:I2[j,i]=I2[j,i-1] + sum{k in 1..K}X2[i,k,j] - sum{m in 1..M}X3[j,i,m];
+InvCounty3{j in 1..J,i in 2..N}:I2[j,i]>=0;
+CountyCap1{j in 1..J,i in 1..1}:sum{k in 1..K}X2[i,k,j]<=Cv[j];
+CountyCap2{j in 1..J,i in 2..N}:sum{k in 1..K}X2[i,k,j] + I2[j,i-1]<=Cv[j];
+WHSetup{k in 1..K,i in 0..N-1}:X1[k,i]<=Cw[k]*Y[k];
+Budget:sum{k in 1..K}Sc[k]*Y[k] + sum{k in 1..K, i in 0..N-1}Sv*X1[k,i] + sum{k in 1..K,j in 1..J,i in 1..N}St[k,j]*X2[i,k,j] + sum{j in 1..J,i in 1..N}Sa[j]*I2[j,i] <= B;
+InvWH1{k in 1..K,i in 0..0}:I1[k,i] = X1[k,i];
+InvWH2{k in 1..K,i in 1..N-1}: I1[k,i] = I1[k,i-1] + X1[k,i] - sum{j in 1..J}X2[i,k,j];
+InvWH3{k in 1..K,i in 0..N}:I1[k,i]<=Cw[k];
+MaxVacWH{k in 1..K,i in 1..N}:sum{j in 1..J}X2[i,k,j]<=I1[k,i-1];
+MaxMfgCap{i in 0..N-1}:sum{k in 1..K}X1[k,i]<=Cm[i];
+CountyLimit{j in 1..J,i in 1..N}:sum{m in 1..M}X3[j,i,m]<=Lv[j];
